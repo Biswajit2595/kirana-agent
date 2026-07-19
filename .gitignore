@@ -1,0 +1,27 @@
+# Secrets -- never commit these
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+venv/
+*.egg-info/
+
+# SQLite database -- local dev data, and in production this lives on a
+# mounted volume, not in the repo
+*.db
+*.db-wal
+*.db-shm
+
+# Generated PDF/PPTX output from documents.py
+generated/
+
+# OS clutter
+.DS_Store
+Thumbs.db
+
+# Editor/IDE
+.vscode/
+.idea/

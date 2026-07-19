@@ -1,0 +1,7 @@
+openai>=1.50.0
+python-telegram-bot>=21.0
+python-dotenv>=1.0
+reportlab>=4.0
+python-pptx>=1.0
+matplotlib>=3.8
+pytest>=8.0
