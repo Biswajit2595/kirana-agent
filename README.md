@@ -37,6 +37,17 @@ take-home assignment, not an architectural blind spot: the tool-orchestration
 design itself is provider- and budget-agnostic, as demonstrated by three
 clean swaps with zero changes to business logic.
 
+**Second known trade-off:** if deployed on Render's free tier specifically,
+the filesystem is ephemeral -- there is no free persistent disk, so
+`kirana.db` can be lost on a redeploy (though it does survive ordinary
+restarts within the same running instance). `db.py`'s `DB_PATH` is
+env-var-configurable specifically so this can point at a real persistent
+volume (Railway/Fly, or a paid Render disk) in a genuinely production
+setting. `bot.py` also includes a minimal Flask health-check wrapper
+(active only when Render's `RENDER` env var is present) purely so a
+polling-based bot can run at all on Render's free Web-Service-only tier,
+which otherwise spins down services with no incoming HTTP traffic.
+
 ## Control loop
 
 ```
@@ -187,12 +198,30 @@ python3 bot.py
 
 ## Deploy
 
+### Option A: Railway or Fly.io (true persistent volume, recommended if available)
 1. Create a bot with [@BotFather](https://t.me/BotFather), get the token.
 2. Push this repo to Railway or Fly.io, set `TELEGRAM_BOT_TOKEN` and
    `GROQ_API_KEY` as env vars, deploy.
-3. `kirana.db` (SQLite) needs a persistent volume on your host — without one,
-   restart wipes the store, which fails the "survives a restart" requirement.
+3. Attach a persistent volume, set `DB_PATH` to a file inside it (see
+   `.env.example`) -- without this, a restart wipes the store.
 4. Message the bot handle, run through the demo script above.
+
+### Option B: Render free tier (no card required, ephemeral disk trade-off)
+1. Push this repo to GitHub, create a new **Web Service** on Render pointing at it.
+2. Build command: `pip install -r requirements.txt`. Start command: `python bot.py`.
+3. Set env vars: `TELEGRAM_BOT_TOKEN`, `GROQ_API_KEY`. Render sets `RENDER`
+   and `PORT` automatically -- `bot.py` detects `RENDER` and starts a
+   minimal Flask health-check endpoint alongside the actual Telegram
+   polling loop (which runs in a background thread), since Render's free
+   tier is Web-Service-only and would otherwise spin the process down.
+4. Optional but recommended: point a free external uptime pinger (e.g.
+   [UptimeRobot](https://uptimerobot.com), [cron-job.org](https://cron-job.org))
+   at the Render service's URL every ~10 minutes, to keep it from spinning
+   down between messages.
+5. Known limitation: no free persistent disk on Render -- `kirana.db` can
+   be lost on a redeploy. Acceptable for a review window where you aren't
+   pushing new commits; not a substitute for a real persistent volume in
+   production (see Option A).
 
 ## Known scope cuts
 

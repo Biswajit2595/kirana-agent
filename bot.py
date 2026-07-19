@@ -90,5 +90,29 @@ def main():
     app.run_polling()
 
 
+def _run_health_server():
+    """Render's free tier is Web-Service-only (no free Background Workers),
+    and free Web Services spin down without HTTP traffic. This tiny Flask
+    server exists ONLY to satisfy that requirement -- it does nothing but
+    answer health checks. The actual bot logic is entirely in main() above,
+    unaffected by this. Combine with an external uptime pinger (e.g.
+    UptimeRobot, cron-job.org) hitting this URL every ~10 min to prevent
+    the free instance from spinning down between messages."""
+    from flask import Flask
+    health_app = Flask(__name__)
+
+    @health_app.route("/")
+    def health():
+        return "kirana-agent bot is running", 200
+
+    port = int(os.environ.get("PORT", 8080))  # Render sets $PORT automatically
+    health_app.run(host="0.0.0.0", port=port)
+
+
 if __name__ == "__main__":
-    main()
+    if os.environ.get("RENDER"):  # Render sets this env var automatically on its platform
+        import threading
+        threading.Thread(target=main, daemon=True).start()
+        _run_health_server()  # blocks in the main thread, keeping the process alive for Render
+    else:
+        main()  # local dev / other platforms: plain polling, no HTTP server needed
